@@ -24,16 +24,18 @@
 Register ranges:
 
 - `1-99`: primary process readings.
-- `100-199`: action, calibration, and control triggers.
+- `100-199`: action, calibration, and control registers.
 - `200-299`: valve command/current-state registers (200-202) and diagnostics (203-208).
+
+All `write trigger` registers use value `1` to execute the action and the firmware resets them to `0` after processing. Register `109` is not a trigger: it stores the finish tolerance in grams, and writing a new value updates `Config.tolerance` persistently.
 
 | Register | Direction     | Meaning                     | Scale / Values                                                                 |
 | -------- | ------------- | --------------------------- | ------------------------------------------------------------------------------ |
 | 1        | read          | Irrigation weight           | grams, signed int16                                                            |
 | 2        | read          | Drain weight                | grams, signed int16                                                            |
 | 3        | read          | Calculated pressure         | centibar (`bar * 100`), signed int16                                           |
-| 100      | write trigger | Tare cell 1                 | write `5`; firmware resets to `0`                                              |
-| 101      | write trigger | Tare cell 2                 | write `5`; firmware resets to `0`                                              |
+| 100      | write trigger | Tare cell 1                 | write `1`; firmware resets to `0`                                              |
+| 101      | write trigger | Tare cell 2                 | write `1`; firmware resets to `0`                                              |
 | 102      | write         | Calibration weight cell 1   | decigrams (`grams * 10`)                                                       |
 | 103      | write trigger | Calibrate cell 1            | write `1`; firmware resets to `0`                                              |
 | 104      | write         | Calibration weight cell 2   | decigrams (`grams * 10`)                                                       |
@@ -41,6 +43,7 @@ Register ranges:
 | 106      | write trigger | Finish irrigation           | write `1`; firmware resets to `0`                                              |
 | 107      | write trigger | Finish drain                | write `1`; firmware resets to `0`                                              |
 | 108      | write trigger | Reset device                | write `1`; firmware resets to `0`                                              |
+| 109      | read/write    | Finish tolerance            | grams (0-255); write updates Config on change                                  |
 | 200      | read/write    | V1 command/current state    | write `0` close or `1` open; read current state                                |
 | 201      | read/write    | V2 command/current state    | write `0` close or `1` open; read current state                                |
 | 202      | read/write    | V3 command/current state    | write `0` close or `1` open; read current state                                |

@@ -29,6 +29,7 @@ constexpr uint16_t REG_CAL_TRIGGER_CELL_2 = 105;
 constexpr uint16_t REG_ACTION_FINISH_IRRIGATION = 106;
 constexpr uint16_t REG_ACTION_FINISH_DRAIN = 107;
 constexpr uint16_t REG_ACTION_RESET_DEVICE = 108;
+constexpr uint16_t REG_TOLERANCE = 109;
 
 // Modbus secondary actions and status for debugging
 constexpr uint16_t REG_CMD_VALVE_1 = 200;
@@ -42,9 +43,7 @@ constexpr uint16_t REG_LOAD_CELL_2_ERROR = 207;
 constexpr uint16_t REG_VALVE_COMMAND_STATUS = 208;
 
 // Trigger for tare and calibration actions: when the corresponding register is written with these values, the action is triggered and the register is reset to 0 by ModbusOrders.
-constexpr uint16_t TARE_TRIGGER_VALUE = 5;
-constexpr uint16_t CALIBRATION_TRIGGER_VALUE = 1;
-constexpr uint16_t RESET_TRIGGER_VALUE = 1;
+constexpr uint16_t ACTION_TRIGGER_VALUE = 1;
 
 // Modbus register map: registers 1-208 are available for use, starting from REG_WEIGHT_IRRIGATION_G. Registers above 208 are not defined and will be ignored by the Modbus library.
 constexpr uint16_t MODBUS_FIRST_HREG = 1;
@@ -66,6 +65,7 @@ void ModbusOrders::begin()
 	mb_.Hreg(REG_CMD_VALVE_2, lastValveCommands_[1]);
 	mb_.Hreg(REG_CMD_VALVE_3, lastValveCommands_[2]);
 	mb_.Hreg(REG_VALVE_COMMAND_STATUS, 0);
+	mb_.Hreg(REG_TOLERANCE, Config_Get().tolerance);
 }
 
 void ModbusOrders::task()
@@ -79,6 +79,16 @@ void ModbusOrders::process(uint32_t nowMs)
 	processActionRegisters();
 	processValveCommandRegisters();
 	syncValveCommandRegisters();
+
+	const uint16_t toleranceReg = mb_.Hreg(REG_TOLERANCE);
+	Config &cfg = Config_Get();
+	if (toleranceReg != cfg.tolerance)
+	{
+		cfg.tolerance = constrain(toleranceReg, 0, 255);
+		Config_Save();
+		mb_.Hreg(REG_TOLERANCE, cfg.tolerance);
+		Serial.printf("Tolerance configurada a %u via Modbus\n", cfg.tolerance);
+	}
 }
 
 void ModbusOrders::updateWeights(float irrigationGrams, float drainGrams)
@@ -165,19 +175,19 @@ ModbusOrders::PressureReading ModbusOrders::readPressure() const
 
 void ModbusOrders::processActionRegisters()
 {
-	if (mb_.Hreg(REG_TARE_CELL_1) == TARE_TRIGGER_VALUE)
+	if (mb_.Hreg(REG_TARE_CELL_1) == ACTION_TRIGGER_VALUE)
 	{
 		loadCells_.requestTare(1, "Modbus");
 		mb_.Hreg(REG_TARE_CELL_1, 0);
 	}
 
-	if (mb_.Hreg(REG_TARE_CELL_2) == TARE_TRIGGER_VALUE)
+	if (mb_.Hreg(REG_TARE_CELL_2) == ACTION_TRIGGER_VALUE)
 	{
 		loadCells_.requestTare(2, "Modbus");
 		mb_.Hreg(REG_TARE_CELL_2, 0);
 	}
 
-	if (mb_.Hreg(REG_CAL_TRIGGER_CELL_1) == CALIBRATION_TRIGGER_VALUE)
+	if (mb_.Hreg(REG_CAL_TRIGGER_CELL_1) == ACTION_TRIGGER_VALUE)
 	{
 		const float grams = static_cast<float>(mb_.Hreg(REG_CAL_WEIGHT_CELL_1_DG)) / 10.0f;
 		if (grams > 0.0f)
@@ -190,7 +200,7 @@ void ModbusOrders::processActionRegisters()
 		mb_.Hreg(REG_CAL_TRIGGER_CELL_1, 0);
 	}
 
-	if (mb_.Hreg(REG_CAL_TRIGGER_CELL_2) == CALIBRATION_TRIGGER_VALUE)
+	if (mb_.Hreg(REG_CAL_TRIGGER_CELL_2) == ACTION_TRIGGER_VALUE)
 	{
 		const float grams = static_cast<float>(mb_.Hreg(REG_CAL_WEIGHT_CELL_2_DG)) / 10.0f;
 		if (grams > 0.0f)
@@ -203,7 +213,19 @@ void ModbusOrders::processActionRegisters()
 		mb_.Hreg(REG_CAL_TRIGGER_CELL_2, 0);
 	}
 
-	if (mb_.Hreg(REG_ACTION_RESET_DEVICE) == RESET_TRIGGER_VALUE)
+	if (mb_.Hreg(REG_ACTION_FINISH_IRRIGATION) == ACTION_TRIGGER_VALUE)
+	{
+		waterInlet_.finishIrrigation();
+		mb_.Hreg(REG_ACTION_FINISH_IRRIGATION, 0);
+	}
+
+	if (mb_.Hreg(REG_ACTION_FINISH_DRAIN) == ACTION_TRIGGER_VALUE)
+	{
+		drain_.finishDrain();
+		mb_.Hreg(REG_ACTION_FINISH_DRAIN, 0);
+	}
+
+	if (mb_.Hreg(REG_ACTION_RESET_DEVICE) == ACTION_TRIGGER_VALUE)
 	{
 		Serial.println("Modbus triggered device reset");
 		mb_.Hreg(REG_ACTION_RESET_DEVICE, 0);
