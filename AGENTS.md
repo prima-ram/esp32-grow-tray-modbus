@@ -24,30 +24,32 @@
 Register ranges:
 
 - `1-99`: primary process readings.
-- `100-199`: action and calibration triggers.
-- `200-299`: valve command/current-state registers.
-- `300+`: diagnostics, raw values, and errors.
+- `100-199`: action, calibration, and control triggers.
+- `200-299`: valve command/current-state registers (200-202) and diagnostics (203-208).
 
 | Register | Direction     | Meaning                     | Scale / Values                                                                 |
 | -------- | ------------- | --------------------------- | ------------------------------------------------------------------------------ |
 | 1        | read          | Irrigation weight           | grams, signed int16                                                            |
 | 2        | read          | Drain weight                | grams, signed int16                                                            |
 | 3        | read          | Calculated pressure         | centibar (`bar * 100`), signed int16                                           |
-| 100      | write trigger | Tare cell 1                 | write legacy value `5`; firmware resets to `0`                                 |
-| 101      | write trigger | Tare cell 2                 | write legacy value `5`; firmware resets to `0`                                 |
+| 100      | write trigger | Tare cell 1                 | write `5`; firmware resets to `0`                                              |
+| 101      | write trigger | Tare cell 2                 | write `5`; firmware resets to `0`                                              |
 | 102      | write         | Calibration weight cell 1   | decigrams (`grams * 10`)                                                       |
 | 103      | write trigger | Calibrate cell 1            | write `1`; firmware resets to `0`                                              |
 | 104      | write         | Calibration weight cell 2   | decigrams (`grams * 10`)                                                       |
 | 105      | write trigger | Calibrate cell 2            | write `1`; firmware resets to `0`                                              |
+| 106      | write trigger | Finish irrigation           | write `1`; firmware resets to `0`                                              |
+| 107      | write trigger | Finish drain                | write `1`; firmware resets to `0`                                              |
+| 108      | write trigger | Reset device                | write `1`; firmware resets to `0`                                              |
 | 200      | read/write    | V1 command/current state    | write `0` close or `1` open; read current state                                |
 | 201      | read/write    | V2 command/current state    | write `0` close or `1` open; read current state                                |
 | 202      | read/write    | V3 command/current state    | write `0` close or `1` open; read current state                                |
-| 300      | read          | Pressure sensor voltage     | millivolts                                                                     |
-| 301      | read          | Pressure sensor current     | `mA * 100`                                                                     |
-| 302      | read          | Pressure ADC raw            | raw ADC count                                                                  |
-| 303      | read          | Load cell 1 error           | `0` ok, `1` no valid reading yet                                               |
-| 304      | read          | Load cell 2 error           | `0` ok, `1` no valid reading yet                                               |
-| 305      | read          | Valve Modbus command status | `0` ok; `1` invalid V1 command; `2` invalid V2 command; `3` invalid V3 command |
+| 203      | read          | Pressure sensor voltage     | millivolts                                                                     |
+| 204      | read          | Pressure sensor current     | `mA * 100`                                                                     |
+| 205      | read          | Pressure ADC raw            | raw ADC count                                                                  |
+| 206      | read          | Load cell 1 error           | `0` ok, `1` no valid reading yet                                               |
+| 207      | read          | Load cell 2 error           | `0` ok, `1` no valid reading yet                                               |
+| 208      | read          | Valve Modbus command status | `0` ok; `1` invalid V1 command; `2` invalid V2 command; `3` invalid V3 command |
 
 ## Communication Contracts
 

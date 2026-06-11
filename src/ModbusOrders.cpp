@@ -7,38 +7,48 @@
 
 namespace
 {
+// ESP32 configuration
 constexpr uint8_t MODBUS_SLAVE_ID = 2;
 constexpr uint8_t MODBUS_RX_PIN = 8;
 constexpr uint8_t MODBUS_TX_PIN = 9;
 constexpr uint8_t PRESSURE_ADC_PIN = A8;
 constexpr uint32_t PRESSURE_UPDATE_INTERVAL_MS = 1000;
 
+// Modbus readings
 constexpr uint16_t REG_WEIGHT_IRRIGATION_G = 1;
 constexpr uint16_t REG_WEIGHT_DRAIN_G = 2;
 constexpr uint16_t REG_PRESSURE_CBAR = 3;
 
+// Modbus actions
 constexpr uint16_t REG_TARE_CELL_1 = 100;
 constexpr uint16_t REG_TARE_CELL_2 = 101;
 constexpr uint16_t REG_CAL_WEIGHT_CELL_1_DG = 102;
 constexpr uint16_t REG_CAL_TRIGGER_CELL_1 = 103;
 constexpr uint16_t REG_CAL_WEIGHT_CELL_2_DG = 104;
 constexpr uint16_t REG_CAL_TRIGGER_CELL_2 = 105;
+constexpr uint16_t REG_ACTION_FINISH_IRRIGATION = 106;
+constexpr uint16_t REG_ACTION_FINISH_DRAIN = 107;
+constexpr uint16_t REG_ACTION_RESET_DEVICE = 108;
 
+// Modbus secondary actions and status for debugging
 constexpr uint16_t REG_CMD_VALVE_1 = 200;
 constexpr uint16_t REG_CMD_VALVE_2 = 201;
 constexpr uint16_t REG_CMD_VALVE_3 = 202;
+constexpr uint16_t REG_PRESSURE_MV = 203;
+constexpr uint16_t REG_PRESSURE_MA_X100 = 204;
+constexpr uint16_t REG_PRESSURE_ADC_RAW = 205;
+constexpr uint16_t REG_LOAD_CELL_1_ERROR = 206;
+constexpr uint16_t REG_LOAD_CELL_2_ERROR = 207;
+constexpr uint16_t REG_VALVE_COMMAND_STATUS = 208;
 
-constexpr uint16_t REG_PRESSURE_MV = 300;
-constexpr uint16_t REG_PRESSURE_MA_X100 = 301;
-constexpr uint16_t REG_PRESSURE_ADC_RAW = 302;
-constexpr uint16_t REG_LOAD_CELL_1_ERROR = 303;
-constexpr uint16_t REG_LOAD_CELL_2_ERROR = 304;
-constexpr uint16_t REG_VALVE_COMMAND_STATUS = 305;
-
+// Trigger for tare and calibration actions: when the corresponding register is written with these values, the action is triggered and the register is reset to 0 by ModbusOrders.
 constexpr uint16_t TARE_TRIGGER_VALUE = 5;
 constexpr uint16_t CALIBRATION_TRIGGER_VALUE = 1;
+constexpr uint16_t RESET_TRIGGER_VALUE = 1;
+
+// Modbus register map: registers 1-208 are available for use, starting from REG_WEIGHT_IRRIGATION_G. Registers above 208 are not defined and will be ignored by the Modbus library.
 constexpr uint16_t MODBUS_FIRST_HREG = 1;
-constexpr uint16_t MODBUS_HREG_COUNT = 305;
+constexpr uint16_t MODBUS_HREG_COUNT = 208;
 } // namespace
 
 ModbusOrders::ModbusOrders(LoadCells &loadCells, WaterInletHopper &waterInlet, DrainWaterHopper &drain)
@@ -191,6 +201,13 @@ void ModbusOrders::processActionRegisters()
 			Serial.printf("Modbus calibrated cell 2 with %.1f g\n", static_cast<double>(grams));
 		}
 		mb_.Hreg(REG_CAL_TRIGGER_CELL_2, 0);
+	}
+
+	if (mb_.Hreg(REG_ACTION_RESET_DEVICE) == RESET_TRIGGER_VALUE)
+	{
+		Serial.println("Modbus triggered device reset");
+		mb_.Hreg(REG_ACTION_RESET_DEVICE, 0);
+		ESP.restart();
 	}
 }
 
